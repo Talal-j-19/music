@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AceStep Music Generator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .tabs {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            font-weight: 600;
+            color: #666;
+            transition: all 0.3s;
+            border-bottom: 3px solid transparent;
+        }
+
+        .tab:hover {
+            background: #e9ecef;
+        }
+
+        .tab.active {
+            color: #667eea;
+            background: white;
+            border-bottom-color: #667eea;
+        }
+
+        .tab-icon {
+            font-size: 1.5em;
+            margin-right: 8px;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        textarea {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+            font-family: inherit;
+        }
+
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 120px;
+        }
+
+        .hint {
+            font-size: 0.9em;
+            color: #888;
+            margin-top: 5px;
+        }
+
+        .button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.1em;
+            font-weight: 600;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            width: 100%;
+        }
+
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .button:active {
+            transform: translateY(0);
+        }
+
+        .button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .status {
+            margin-top: 30px;
+            padding: 20px;
+            border-radius: 10px;
+            display: none;
+        }
+
+        .status.success {
+            background: #d4edda;
+            border: 2px solid #c3e6cb;
+            color: #155724;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            border: 2px solid #f5c6cb;
+            color: #721c24;
+        }
+
+        .status.loading {
+            background: #d1ecf1;
+            border: 2px solid #bee5eb;
+            color: #0c5460;
+        }
+
+        .audio-player {
+            margin-top: 20px;
+            width: 100%;
+        }
+
+        .download-btn {
+            display: inline-block;
+            margin-top: 15px;
+            padding: 10px 25px;
+            background: #28a745;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+
+        .download-btn:hover {
+            background: #218838;
+        }
+
+        .ai-analysis {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+
+        .ai-analysis h4 {
+            color: #856404;
+            margin-bottom: 10px;
+        }
+
+        .ai-analysis p {
+            color: #856404;
+            line-height: 1.6;
+        }
+
+        .tag-display {
+            background: #e7f3ff;
+            border: 2px solid #2196f3;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+
+        .tag-display h4 {
+            color: #0d47a1;
+            margin-bottom: 10px;
+        }
+
+        .tag-display p {
+            color: #1565c0;
+            font-weight: 500;
+        }
+
+        .examples {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 30px;
+        }
+
+        .examples h3 {
+            margin-bottom: 15px;
+            color: #667eea;
+        }
+
+        .example-item {
+            margin-bottom: 10px;
+            padding: 10px;
+            background: white;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .example-item:hover {
+            background: #e9ecef;
+        }
+
+        .example-item strong {
+            color: #667eea;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .feature-badge {
+            display: inline-block;
+            background: #ffc107;
+            color: #000;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: 700;
+            margin-left: 8px;
+            vertical-align: middle;
+        }
+
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+
+        .info-box p {
+            color: #0d47a1;
+            margin: 0;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎵 AceStep Music Generator</h1>
+            <p>Create amazing music with AI</p>
+        </div>
+
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('manual')">
+                <span class="tab-icon">🎛️</span>
+                Manual Mode
+            </div>
+            <div class="tab" onclick="switchTab('ai')">
+                <span class="tab-icon">🤖</span>
+                AI-Powered
+                <span class="feature-badge">NEW</span>
+            </div>
+        </div>
+
+        <div class="content">
+            <!-- Manual Mode Tab -->
+            <div id="manual-tab" class="tab-content active">
+                <form id="manualForm">
+                    <div class="form-group">
+                        <label for="tags">Genre Tags *</label>
+                        <input type="text" id="tags" name="tags" required
+                            placeholder="e.g., lofi, hiphop, chill, relaxing">
+                        <div class="hint">Comma-separated list of genre tags to control the style</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="lyrics">Lyrics (Optional)</label>
+                        <textarea id="lyrics" name="lyrics"
+                            placeholder="[verse]&#10;Your lyrics here&#10;&#10;[chorus]&#10;More lyrics&#10;&#10;Use [inst] for instrumental music"></textarea>
+                        <div class="hint">Use [verse], [chorus], [bridge] for structure. Use [inst] for instrumental.
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="duration">Duration (seconds)</label>
+                        <input type="number" id="duration" name="duration" value="60" min="1" max="300">
+                        <div class="hint">Length of the audio (1-300 seconds)</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="steps">Quality (Steps)</label>
+                        <input type="number" id="steps" name="steps" value="27" min="10" max="100">
+                        <div class="hint">Higher = better quality but slower (10-100)</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="seed">Seed (Optional)</label>
+                        <input type="number" id="seed" name="seed" placeholder="Leave empty for random">
+                        <div class="hint">Use the same seed to get reproducible results</div>
+                    </div>
+
+                    <button type="submit" class="button" id="manualBtn">
+                        🎼 Generate Music
+                    </button>
+                </form>
+
+                <div id="manual-status" class="status"></div>
+
+                <div class="examples">
+                    <h3>💡 Quick Examples</h3>
+                    <div class="example-item" onclick="loadExample('lofi')">
+                        <strong>Lofi Chill:</strong> lofi, hiphop, chill, relaxing
+                    </div>
+                    <div class="example-item" onclick="loadExample('jazz')">
+                        <strong>Smooth Jazz:</strong> jazz, smooth, sophisticated, instrumental
+                    </div>
+                    <div class="example-item" onclick="loadExample('electronic')">
+                        <strong>Electronic Dance:</strong> electronic, dance, edm, energetic
+                    </div>
+                    <div class="example-item" onclick="loadExample('ambient')">
+                        <strong>Ambient Meditation:</strong> ambient, atmospheric, calm, meditation
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI-Powered Mode Tab -->
+            <div id="ai-tab" class="tab-content">
+                <div class="info-box">
+                    <p><strong>🤖 AI-Powered Generation:</strong> Just provide your lyrics and duration. Our AI will
+                        analyze the mood, theme, and emotional tone to automatically generate the perfect music tags!
+                    </p>
+                </div>
+
+                <form id="aiForm">
+                    <div class="form-group">
+                        <label for="ai-lyrics">Lyrics *</label>
+                        <textarea id="ai-lyrics" name="lyrics" required
+                            placeholder="[verse]&#10;Walking through the city lights&#10;Feeling free tonight&#10;&#10;[chorus]&#10;Dancing in the moonlight&#10;Everything feels right"></textarea>
+                        <div class="hint">The AI will analyze your lyrics to determine the best music style and genre
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="ai-duration">Duration (seconds)</label>
+                        <input type="number" id="ai-duration" name="duration" value="60" min="1" max="300">
+                        <div class="hint">Quality settings will be automatically optimized based on duration</div>
+                    </div>
+
+                    <button type="submit" class="button" id="aiBtn">
+                        🤖 Generate with AI
+                    </button>
+                </form>
+
+                <div id="ai-status" class="status"></div>
+
+                <div class="examples">
+                    <h3>💡 AI Example Lyrics</h3>
+                    <div class="example-item" onclick="loadAIExample('upbeat')">
+                        <strong>Upbeat Pop:</strong> "Sunshine in my eyes, feeling so alive..."
+                    </div>
+                    <div class="example-item" onclick="loadAIExample('melancholic')">
+                        <strong>Melancholic Ballad:</strong> "Empty streets and silent nights..."
+                    </div>
+                    <div class="example-item" onclick="loadAIExample('dance')">
+                        <strong>Electronic Dance:</strong> "Lights are flashing all around..."
+                    </div>
+                    <div class="example-item" onclick="loadAIExample('chill')">
+                        <strong>Chill Lofi:</strong> "Rainy days and coffee cups..."
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000';
+
+        // Tab switching
+        function switchTab(tab) {
+            // Update tab buttons
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            event.target.closest('.tab').classList.add('active');
+
+            // Update tab content
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.getElementById(`${tab}-tab`).classList.add('active');
+        }
+
+        // Manual mode examples
+        function loadExample(type) {
+            const examples = {
+                'lofi': {
+                    tags: 'lofi, hiphop, chill, relaxing',
+                    lyrics: '[inst]',
+                    duration: 60
+                },
+                'jazz': {
+                    tags: 'jazz, smooth, sophisticated, instrumental',
+                    lyrics: '[inst]',
+                    duration: 60
+                },
+                'electronic': {
+                    tags: 'electronic, dance, edm, energetic',
+                    lyrics: '[inst]',
+                    duration: 45
+                },
+                'ambient': {
+                    tags: 'ambient, atmospheric, calm, meditation',
+                    lyrics: '[inst]',
+                    duration: 90
+                }
+            };
+
+            const example = examples[type];
+            document.getElementById('tags').value = example.tags;
+            document.getElementById('lyrics').value = example.lyrics;
+            document.getElementById('duration').value = example.duration;
+        }
+
+        // AI mode examples
+        function loadAIExample(type) {
+            const examples = {
+                'upbeat': {
+                    lyrics: `[verse]
+Sunshine in my eyes
+Feeling so alive
+Every moment's a surprise
+
+[chorus]
+This is our time
+Everything's sublime
+Dancing through the day
+In our own special way`,
+                    duration: 60
+                },
+                'melancholic': {
+                    lyrics: `[verse]
+Empty streets and silent nights
+Memories fade from sight
+Searching for the light
+
+[chorus]
+I'm lost without you here
+Wishing you were near
+These tears won't disappear`,
+                    duration: 60
+                },
+                'dance': {
+                    lyrics: `[verse]
+Lights are flashing all around
+Feet don't touch the ground
+Lost in the sound
+
+[chorus]
+Dance until the morning light
+This is our night
+Everything feels right`,
+                    duration: 90
+                },
+                'chill': {
+                    lyrics: `[verse]
+Rainy days and coffee cups
+Taking life slow
+Watching the world go
+
+[chorus]
+Just breathe and let it go
+Find your inner glow
+Peace is all we know`,
+                    duration: 120
+                }
+            };
+
+            const example = examples[type];
+            document.getElementById('ai-lyrics').value = example.lyrics;
+            document.getElementById('ai-duration').value = example.duration;
+        }
+
+        function showStatus(statusId, message, type) {
+            const statusDiv = document.getElementById(statusId);
+            statusDiv.className = `status ${type}`;
+            statusDiv.innerHTML = message;
+            statusDiv.style.display = 'block';
+        }
+
+        function hideStatus(statusId) {
+            document.getElementById(statusId).style.display = 'none';
+        }
+
+        // Manual form submission
+        document.getElementById('manualForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const generateBtn = document.getElementById('manualBtn');
+            generateBtn.disabled = true;
+            generateBtn.textContent = '🎵 Generating...';
+
+            hideStatus('manual-status');
+            showStatus('manual-status', '<div class="spinner"></div><p>Generating your music... This may take 1-2 minutes.</p>', 'loading');
+
+            try {
+                const formData = {
+                    tags: document.getElementById('tags').value,
+                    lyrics: document.getElementById('lyrics').value || '[inst]',
+                    duration: parseInt(document.getElementById('duration').value),
+                    number_of_steps: parseInt(document.getElementById('steps').value)
+                };
+
+                const seedValue = document.getElementById('seed').value;
+                if (seedValue) {
+                    formData.seed = parseInt(seedValue);
+                }
+
+                const response = await fetch(`${API_BASE}/generate`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                const result = await response.json();
+
+                if (response.ok && result.success) {
+                    const audioUrl = `${API_BASE}${result.audio_url}`;
+                    showStatus('manual-status', `
+                        <h3>✅ Music Generated Successfully!</h3>
+                        <p><strong>Seed:</strong> ${result.seed}</p>
+                        <p><strong>Tags:</strong> ${result.tags}</p>
+                        <audio controls class="audio-player" src="${audioUrl}">
+                            Your browser does not support the audio element.
+                        </audio>
+                        <br>
+                        <a href="${audioUrl}" download class="download-btn">⬇️ Download MP3</a>
+                    `, 'success');
+                } else {
+                    showStatus('manual-status', `
+                        <h3>❌ Error</h3>
+                        <p>${result.detail || result.message || 'Failed to generate music'}</p>
+                    `, 'error');
+                }
+            } catch (error) {
+                showStatus('manual-status', `
+                    <h3>❌ Connection Error</h3>
+                    <p>Could not connect to the API. Make sure the server is running at ${API_BASE}</p>
+                    <p>Error: ${error.message}</p>
+                `, 'error');
+            } finally {
+                generateBtn.disabled = false;
+                generateBtn.textContent = '🎼 Generate Music';
+            }
+        });
+
+        // AI form submission
+        document.getElementById('aiForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const generateBtn = document.getElementById('aiBtn');
+            generateBtn.disabled = true;
+            generateBtn.textContent = '🤖 Analyzing & Generating...';
+
+            hideStatus('ai-status');
+            showStatus('ai-status', '<div class="spinner"></div><p>AI is analyzing your lyrics and generating music... This may take 1-2 minutes.</p>', 'loading');
+
+            try {
+                const formData = {
+                    lyrics: document.getElementById('ai-lyrics').value,
+                    duration: parseInt(document.getElementById('ai-duration').value)
+                };
+
+                const response = await fetch(`${API_BASE}/generate-ai`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                const result = await response.json();
+
+                if (response.ok && result.success) {
+                    const audioUrl = `${API_BASE}${result.audio_url}`;
+                    showStatus('ai-status', `
+                        <h3>✅ AI-Powered Music Generated Successfully!</h3>
+                        
+                        <div class="tag-display">
+                            <h4>🎨 AI-Generated Tags</h4>
+                            <p>${result.generated_tags}</p>
+                        </div>
+                        
+                        <div class="ai-analysis">
+                            <h4>🧠 AI Analysis</h4>
+                            <p>${result.ai_analysis}</p>
+                        </div>
+                        
+                        <p style="margin-top: 15px;"><strong>Seed:</strong> ${result.seed}</p>
+                        
+                        <audio controls class="audio-player" src="${audioUrl}">
+                            Your browser does not support the audio element.
+                        </audio>
+                        <br>
+                        <a href="${audioUrl}" download class="download-btn">⬇️ Download MP3</a>
+                    `, 'success');
+                } else {
+                    showStatus('ai-status', `
+                        <h3>❌ Error</h3>
+                        <p>${result.detail || result.message || 'Failed to generate music'}</p>
+                    `, 'error');
+                }
+            } catch (error) {
+                showStatus('ai-status', `
+                    <h3>❌ Connection Error</h3>
+                    <p>Could not connect to the API. Make sure the server is running at ${API_BASE}</p>
+                    <p>Error: ${error.message}</p>
+                `, 'error');
+            } finally {
+                generateBtn.disabled = false;
+                generateBtn.textContent = '🤖 Generate with AI';
+            }
+        });
+
+        // Check API health on load
+        window.addEventListener('load', async () => {
+            try {
+                const response = await fetch(`${API_BASE}/health`);
+                const health = await response.json();
+
+                if (health.status !== 'healthy') {
+                    showStatus('manual-status', `
+                        <h3>⚠️ API Not Configured</h3>
+                        <p>${health.message}</p>
+                        <p>Please set your FAL_KEY in the .env file and restart the server.</p>
+                    `, 'error');
+                }
+            } catch (error) {
+                showStatus('manual-status', `
+                    <h3>⚠️ Server Not Running</h3>
+                    <p>Could not connect to the API at ${API_BASE}</p>
+                    <p>Please start the server using: <code>start.bat</code></p>
+                `, 'error');
+            }
+        });
+    </script>
+</body>
+
+</html>
