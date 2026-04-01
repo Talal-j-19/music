@@ -1,0 +1,138 @@
+{
+  "timestamp": "2026-04-01T18:22:47.851907",
+  "base_url": "http://localhost:8000",
+  "results": [
+    {
+      "endpoint": "GET /health",
+      "status_code": 200,
+      "passed": true,
+      "note": "API is running and FAL_KEY is configured",
+      "response_summary": null
+    },
+    {
+      "endpoint": "GET /",
+      "status_code": 200,
+      "passed": true,
+      "note": "content-type=text/html; charset=utf-8",
+      "response_summary": null
+    },
+    {
+      "endpoint": "GET /api",
+      "status_code": 200,
+      "passed": true,
+      "note": "version=1.0.0",
+      "response_summary": null
+    },
+    {
+      "endpoint": "GET /download/<missing>",
+      "status_code": 404,
+      "passed": true,
+      "note": "404 check",
+      "response_summary": null
+    },
+    {
+      "endpoint": "GET /download/<mp3>",
+      "status_code": 200,
+      "passed": true,
+      "note": "file=009b45be-e083-441c-bebd-1ff6e9e65e19.mp3, bytes=1439468",
+      "response_summary": null
+    },
+    {
+      "endpoint": "POST /generate (instrumental)",
+      "status_code": 200,
+      "passed": true,
+      "note": "/download/a336cd8c-f5b2-4400-a4eb-511e48ff8e04.mp3",
+      "response_summary": {
+        "success": true,
+        "message": "Music generated successfully",
+        "audio_url": "/download/a336cd8c-f5b2-4400-a4eb-511e48ff8e04.mp3",
+        "seed": 1234,
+        "tags": "lofi, chill, piano",
+        "lyrics": "[inst]"
+      }
+    },
+    {
+      "endpoint": "POST /generate (lyrics)",
+      "status_code": 200,
+      "passed": true,
+      "note": "/download/f0a5dbbd-eb1f-4a6f-b08a-ceee32d58469.mp3",
+      "response_summary": {
+        "success": true,
+        "message": "Music generated successfully",
+        "audio_url": "/download/f0a5dbbd-eb1f-4a6f-b08a-ceee32d58469.mp3",
+        "seed": 5678,
+        "tags": "pop, upbeat",
+        "lyrics": "[verse]\nWalking through the city lights\n[chorus]\nFeeling alive tonight"
+      }
+    },
+    {
+      "endpoint": "POST /generate-ai",
+      "status_code": 200,
+      "passed": true,
+      "note": "tags=electronic, dreamy, mysterious, atmospheric, synth, vocal, electronic beats | url=/download/528a73d5-4817-477a-bc60-7481fdadaa8e.mp3",
+      "response_summary": {
+        "success": true,
+        "message": "Music generated successfully with AI-powered tag generation",
+        "audio_url": "/download/528a73d5-4817-477a-bc60-7481fdadaa8e.mp3",
+        "generated_tags": "electronic, dreamy, mysterious, atmospheric, synth, vocal, electronic beats",
+        "lyrics": "[verse]\nNeon dreams in the rain\nRunning through the dark\n[chorus]\nChasing light again",
+        "seed": 974233724,
+        "ai_analysis": "The lyrics convey a nocturnal journey and hopeful pursuit, tinged with mystery and reflection. 'Electronic' and 'atmospheric' create an immersive soundscape for \"neon dreams,\" while 'dreamy' and 'mysterious' capture the core mood. 'Vocal', 'synth', and 'electronic beats' ensure the narrative is clear and dynamically supported."
+      }
+    },
+    {
+      "endpoint": "POST /prompt-to-audio",
+      "status_code": 200,
+      "passed": true,
+      "note": "/download/a2ac8093-8f4d-46c8-ad48-e234fb6850be.mp3",
+      "response_summary": {
+        "success": true,
+        "message": "Prompt-to-audio generated successfully",
+        "audio_url": "/download/a2ac8093-8f4d-46c8-ad48-e234fb6850be.mp3",
+        "seed": 1153174293,
+        "tags": "chillhop, lofi hip hop, instrumental, relaxing, study beats, jazz hop, mellow, beats to relax/study to, ambient, downtempo, background music, jazzy, piano",
+        "lyrics": "[inst]"
+      }
+    },
+    {
+      "endpoint": "POST /audio-outpaint",
+      "status_code": 200,
+      "passed": true,
+      "note": "/download/8c2d5a45-3a79-4842-be61-29bd6bdcba46.mp3",
+      "response_summary": {
+        "success": true,
+        "message": "Audio outpainted successfully",
+        "audio_url": "/download/8c2d5a45-3a79-4842-be61-29bd6bdcba46.mp3",
+        "seed": 704793203,
+        "tags": "lofi, chill",
+        "lyrics": "[inst]"
+      }
+    },
+    {
+      "endpoint": "POST /audio-inpaint",
+      "status_code": 200,
+      "passed": true,
+      "note": "/download/024234ed-f9dc-4869-9adb-21c1b2c69424.mp3",
+      "response_summary": {
+        "success": true,
+        "message": "Audio inpainted successfully",
+        "audio_url": "/download/024234ed-f9dc-4869-9adb-21c1b2c69424.mp3",
+        "seed": 439720312,
+        "tags": "lofi, chill",
+        "lyrics": "[inst]"
+      }
+    },
+    {
+      "endpoint": "POST /audio-to-audio",
+      "status_code": "ERR",
+      "passed": false,
+      "note": "HTTPConnectionPool(host='localhost', port=8000): Read timed out. (read timeout=300)",
+      "response_summary": null
+    }
+  ],
+  "summary": {
+    "total": 12,
+    "passed": 11,
+    "failed": 1
+  }
+}

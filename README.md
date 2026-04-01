@@ -125,17 +125,75 @@ Generate music from text and lyrics.
 }
 ```
 
-### 2. Download Music
+### 2. Generate Music from Prompt
+**POST** `/prompt-to-audio`
+
+Generate music from a simple text prompt.
+
+**Request Body:**
+```json
+{
+  "prompt": "A lofi hiphop song with a chill vibe about a sunny day",
+  "instrumental": false,
+  "duration": 60,
+  "number_of_steps": 27
+}
+```
+
+### 3. Audio Outpaint
+**POST** `/audio-outpaint`
+
+Extend the beginning or end of provided audio.
+
+**Content-Type:** `multipart/form-data`
+
+**Form Data:**
+- `audio`: The audio file to upload (required)
+- `extend_before_duration`: Seconds to extend from start (default: 0)
+- `extend_after_duration`: Seconds to extend from end (default: 30)
+- `tags`: Genre tags
+- `lyrics`: Lyrics to be sung
+
+### 4. Audio Inpaint
+**POST** `/audio-inpaint`
+
+Modify a portion of provided audio.
+
+**Content-Type:** `multipart/form-data`
+
+**Form Data:**
+- `audio`: The audio file to upload (required)
+- `start_time_relative_to`: "start" or "end" (default: "start")
+- `start_time`: Start time in seconds (default: 0)
+- `end_time_relative_to`: "start" or "end" (default: "start")
+- `end_time`: End time in seconds (default: 30)
+- `tags`: Genre tags
+- `variance`: Variance for inpainting (default: 0.5)
+
+### 5. Audio to Audio (Remix/Edit)
+**POST** `/audio-to-audio`
+
+Generate music from a lyrics and example audio.
+
+**Content-Type:** `multipart/form-data`
+
+**Form Data:**
+- `audio`: The audio file to upload (required)
+- `edit_mode`: "remix" or "lyrics" (default: "remix")
+- `original_tags`: Original tags of the audio file
+- `tags`: New genre tags
+
+### 6. Download Music
 **GET** `/download/{filename}`
 
 Download the generated music file.
 
-### 3. Health Check
+### 7. Health Check
 **GET** `/health`
 
 Check if the API is running and properly configured.
 
-### 4. Root
+### 8. Root
 **GET** `/`
 
 Get API information and available endpoints.

@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, File, UploadFile, Form
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -11,6 +11,7 @@ from pydub import AudioSegment
 import tempfile
 from dotenv import load_dotenv
 import google.generativeai as genai
+import shutil
 
 # Load environment variables from .env file
 load_dotenv()
@@ -109,6 +110,15 @@ class AIGenerationResponse(BaseModel):
     lyrics: str | None = None
     seed: int | None = None
     ai_analysis: str | None = None
+
+
+class PromptToAudioRequest(BaseModel):
+    """Request model for prompt to audio generation"""
+    prompt: str = Field(..., description="Prompt to control the style of the generated audio.")
+    instrumental: bool = Field(default=False, description="Whether to generate an instrumental version.")
+    duration: float = Field(default=60, ge=1, le=300)
+    number_of_steps: int = Field(default=27, ge=10, le=100)
+    seed: int | None = Field(default=None)
 
 
 
@@ -302,6 +312,53 @@ def convert_to_mp3(input_path: Path, output_path: Path) -> Path:
     audio.export(str(output_path), format="mp3", bitrate="192k")
     
     return output_path
+
+
+async def process_fal_audio_result(result: dict, success_message: str) -> MusicGenerationResponse:
+    """Helper method to process fal.ai response, download and convert the generated audio."""
+    if not result or "audio" not in result:
+        raise HTTPException(
+            status_code=500,
+            detail="Invalid response from AceStep API: No audio in response"
+        )
+    
+    audio_info = result["audio"]
+    audio_url = audio_info.get("url")
+    
+    if not audio_url:
+        raise HTTPException(
+            status_code=500,
+            detail="Invalid response from AceStep API: No audio URL in response"
+        )
+    
+    # Generate unique filename
+    file_id = str(uuid.uuid4())
+    
+    # Download the audio file
+    temp_file = OUTPUT_DIR / f"{file_id}_temp{Path(audio_url).suffix}"
+    await download_audio(audio_url, temp_file)
+    
+    # Convert to MP3 if not already MP3
+    output_file = OUTPUT_DIR / f"{file_id}.mp3"
+    
+    if temp_file.suffix.lower() != ".mp3":
+        print(f"Converting {temp_file.suffix} to MP3...")
+        convert_to_mp3(temp_file, output_file)
+        # Remove temporary file
+        temp_file.unlink()
+    else:
+        # Just rename if already MP3
+        temp_file.rename(output_file)
+    
+    # Return response with file path
+    return MusicGenerationResponse(
+        success=True,
+        message=success_message,
+        audio_url=f"/download/{output_file.name}",
+        seed=result.get("seed"),
+        tags=result.get("tags", ""),
+        lyrics=result.get("lyrics", "")
+    )
 
 
 @app.post("/generate", response_model=MusicGenerationResponse)
@@ -514,6 +571,130 @@ async def generate_music_ai(request: AIGenerationRequest):
             status_code=500,
             detail=f"Error generating music: {str(e)}"
         )
+
+
+
+@app.post("/prompt-to-audio", response_model=MusicGenerationResponse)
+async def generate_music_prompt(request: PromptToAudioRequest):
+    """
+    Generate music from a simple prompt using AceStep
+    """
+    if not os.getenv("FAL_KEY"): raise HTTPException(status_code=500, detail="FAL_KEY environment variable not set.")
+    try:
+        arguments = { "prompt": request.prompt, "instrumental": request.instrumental, "duration": request.duration, "number_of_steps": request.number_of_steps }
+        if request.seed is not None: arguments["seed"] = request.seed
+        print(f"Calling fal-ai/ace-step/prompt-to-audio with: {arguments}")
+        result = fal_client.run("fal-ai/ace-step/prompt-to-audio", arguments=arguments)
+        return await process_fal_audio_result(result, "Prompt-to-audio generated successfully")
+    except Exception as e:
+        print(f"Error in prompt-to-audio generation: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error generating music: {str(e)}")
+
+
+@app.post("/audio-outpaint", response_model=MusicGenerationResponse)
+async def generate_music_outpaint(
+    audio: UploadFile = File(..., description="Audio file to be outpainted"),
+    extend_before_duration: float = Form(0, description="Seconds to extend from start"),
+    extend_after_duration: float = Form(30, description="Seconds to extend from end"),
+    tags: str = Form("", description="Genre tags"),
+    lyrics: str = Form("", description="Lyrics to be sung"),
+    number_of_steps: int = Form(27),
+    seed: int | None = Form(None)
+):
+    """
+    Extend the beginning or end of provided audio with lyrics and/or style using AceStep
+    """
+    if not os.getenv("FAL_KEY"): raise HTTPException(status_code=500, detail="FAL_KEY environment variable not set.")
+    
+    with tempfile.NamedTemporaryFile(delete=False, suffix=Path(audio.filename or "").suffix or ".wav") as temp_in:
+        shutil.copyfileobj(audio.file, temp_in)
+        temp_input_path = temp_in.name
+        
+    try:
+        audio_url = fal_client.upload_file(temp_input_path)
+        arguments = { "audio_url": audio_url, "extend_before_duration": extend_before_duration, "extend_after_duration": extend_after_duration, "tags": tags, "lyrics": lyrics, "number_of_steps": number_of_steps }
+        if seed is not None: arguments["seed"] = seed
+        print(f"Calling fal-ai/ace-step/audio-outpaint with: {arguments}")
+        result = fal_client.run("fal-ai/ace-step/audio-outpaint", arguments=arguments)
+        return await process_fal_audio_result(result, "Audio outpainted successfully")
+    except Exception as e:
+        print(f"Error in audio outpaint generation: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error generating music: {str(e)}")
+    finally:
+        if os.path.exists(temp_input_path):
+            os.remove(temp_input_path)
+
+
+@app.post("/audio-inpaint", response_model=MusicGenerationResponse)
+async def generate_music_inpaint(
+    audio: UploadFile = File(..., description="Audio file to be inpainted"),
+    start_time_relative_to: str = Form("start", description="start or end"),
+    start_time: float = Form(0, description="Start time in seconds"),
+    end_time_relative_to: str = Form("start", description="start or end"),
+    end_time: float = Form(30, description="End time in seconds"),
+    tags: str = Form("", description="Genre tags"),
+    lyrics: str = Form("", description="Lyrics to be sung"),
+    variance: float = Form(0.5, description="Variance"),
+    number_of_steps: int = Form(27),
+    seed: int | None = Form(None)
+):
+    """
+    Modify a portion of provided audio with lyrics and/or style using AceStep
+    """
+    if not os.getenv("FAL_KEY"): raise HTTPException(status_code=500, detail="FAL_KEY environment variable not set.")
+    
+    with tempfile.NamedTemporaryFile(delete=False, suffix=Path(audio.filename or "").suffix or ".wav") as temp_in:
+        shutil.copyfileobj(audio.file, temp_in)
+        temp_input_path = temp_in.name
+        
+    try:
+        audio_url = fal_client.upload_file(temp_input_path)
+        arguments = { "audio_url": audio_url, "start_time_relative_to": start_time_relative_to, "start_time": start_time, "end_time_relative_to": end_time_relative_to, "end_time": end_time, "tags": tags, "lyrics": lyrics, "variance": variance, "number_of_steps": number_of_steps }
+        if seed is not None: arguments["seed"] = seed
+        print(f"Calling fal-ai/ace-step/audio-inpaint with: {arguments}")
+        result = fal_client.run("fal-ai/ace-step/audio-inpaint", arguments=arguments)
+        return await process_fal_audio_result(result, "Audio inpainted successfully")
+    except Exception as e:
+        print(f"Error in audio inpaint generation: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error generating music: {str(e)}")
+    finally:
+        if os.path.exists(temp_input_path):
+            os.remove(temp_input_path)
+
+
+@app.post("/audio-to-audio", response_model=MusicGenerationResponse)
+async def generate_music_audio_to_audio(
+    audio: UploadFile = File(..., description="Audio file to be modified"),
+    edit_mode: str = Form("remix", description="lyrics or remix"),
+    original_tags: str = Form("", description="Original tags of the audio file"),
+    original_lyrics: str = Form("", description="Original lyrics of the audio file"),
+    tags: str = Form("", description="New genre tags"),
+    lyrics: str = Form("", description="New lyrics"),
+    number_of_steps: int = Form(27),
+    seed: int | None = Form(None)
+):
+    """
+    Generate music from a lyrics and example audio using AceStep
+    """
+    if not os.getenv("FAL_KEY"): raise HTTPException(status_code=500, detail="FAL_KEY environment variable not set.")
+    
+    with tempfile.NamedTemporaryFile(delete=False, suffix=Path(audio.filename or "").suffix or ".wav") as temp_in:
+        shutil.copyfileobj(audio.file, temp_in)
+        temp_input_path = temp_in.name
+        
+    try:
+        audio_url = fal_client.upload_file(temp_input_path)
+        arguments = { "audio_url": audio_url, "edit_mode": edit_mode, "original_tags": original_tags, "original_lyrics": original_lyrics, "tags": tags, "lyrics": lyrics, "number_of_steps": number_of_steps }
+        if seed is not None: arguments["seed"] = seed
+        print(f"Calling fal-ai/ace-step/audio-to-audio with: {arguments}")
+        result = fal_client.run("fal-ai/ace-step/audio-to-audio", arguments=arguments)
+        return await process_fal_audio_result(result, "Audio remixed/edited successfully")
+    except Exception as e:
+        print(f"Error in audio-to-audio generation: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error generating music: {str(e)}")
+    finally:
+        if os.path.exists(temp_input_path):
+            os.remove(temp_input_path)
 
 
 
