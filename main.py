@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException, File, UploadFile, Form
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+import asyncio
 import fal_client
 import os
 import httpx
@@ -12,6 +13,8 @@ import tempfile
 from dotenv import load_dotenv
 import google.generativeai as genai
 import shutil
+from contextlib import suppress
+from datetime import datetime, timedelta, timezone
 
 # Load environment variables from .env file
 load_dotenv()
@@ -39,6 +42,46 @@ app.add_middleware(
 # Create output directory for generated files
 OUTPUT_DIR = Path("generated_music")
 OUTPUT_DIR.mkdir(exist_ok=True)
+GENERATED_MUSIC_RETENTION_DAYS = int(os.getenv("GENERATED_MUSIC_RETENTION_DAYS", "2"))
+GENERATED_MUSIC_CLEANUP_INTERVAL_SECONDS = int(
+    os.getenv("GENERATED_MUSIC_CLEANUP_INTERVAL_SECONDS", str(24 * 60 * 60))
+)
+
+
+def cleanup_generated_music_files() -> int:
+    """Delete generated audio files older than the retention window."""
+    cutoff_time = datetime.now(timezone.utc) - timedelta(days=GENERATED_MUSIC_RETENTION_DAYS)
+    deleted_files = 0
+
+    for file_path in OUTPUT_DIR.iterdir():
+        if not file_path.is_file():
+            continue
+
+        try:
+            modified_time = datetime.fromtimestamp(file_path.stat().st_mtime, tz=timezone.utc)
+        except FileNotFoundError:
+            continue
+
+        if modified_time < cutoff_time:
+            file_path.unlink(missing_ok=True)
+            deleted_files += 1
+
+    return deleted_files
+
+
+async def cleanup_generated_music_loop() -> None:
+    while True:
+        try:
+            deleted_files = await asyncio.to_thread(cleanup_generated_music_files)
+            if deleted_files:
+                print(f"Cleaned up {deleted_files} expired generated music file(s)")
+        except Exception as exc:
+            print(f"Error cleaning generated music files: {exc}")
+
+        await asyncio.sleep(GENERATED_MUSIC_CLEANUP_INTERVAL_SECONDS)
+
+
+cleanup_task: asyncio.Task | None = None
 
 
 class MusicGenerationRequest(BaseModel):
@@ -118,6 +161,25 @@ class PromptToAudioRequest(BaseModel):
     instrumental: bool = Field(default=False, description="Whether to generate an instrumental version.")
     duration: float = Field(default=60, ge=1, le=300)
     number_of_steps: int = Field(default=27, ge=10, le=100)
+
+
+@app.on_event("startup")
+async def start_generated_music_cleanup() -> None:
+    cleanup_generated_music_files()
+    global cleanup_task
+    cleanup_task = asyncio.create_task(cleanup_generated_music_loop())
+
+
+@app.on_event("shutdown")
+async def stop_generated_music_cleanup() -> None:
+    global cleanup_task
+    if cleanup_task is None:
+        return
+
+    cleanup_task.cancel()
+    with suppress(asyncio.CancelledError):
+        await cleanup_task
+    cleanup_task = None
     seed: int | None = Field(default=None)
 
 
