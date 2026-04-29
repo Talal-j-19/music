@@ -161,6 +161,7 @@ class PromptToAudioRequest(BaseModel):
     instrumental: bool = Field(default=False, description="Whether to generate an instrumental version.")
     duration: float = Field(default=60, ge=1, le=300)
     number_of_steps: int = Field(default=27, ge=10, le=100)
+    seed: int | None = Field(default=None, description="Random seed for reproducibility. Leave empty for random generation.")
 
 
 @app.on_event("startup")
@@ -180,7 +181,6 @@ async def stop_generated_music_cleanup() -> None:
     with suppress(asyncio.CancelledError):
         await cleanup_task
     cleanup_task = None
-    seed: int | None = Field(default=None)
 
 
 
@@ -643,8 +643,17 @@ async def generate_music_prompt(request: PromptToAudioRequest):
     """
     if not os.getenv("FAL_KEY"): raise HTTPException(status_code=500, detail="FAL_KEY environment variable not set.")
     try:
+        print("[DEBUG] PromptToAudioRequest type:", type(request))
+        print("[DEBUG] PromptToAudioRequest fields:", getattr(PromptToAudioRequest, '__fields__', None))
+        try:
+            print("[DEBUG] request.dict():", request.dict())
+        except Exception as _:
+            print("[DEBUG] request.dict() raised")
+
         arguments = { "prompt": request.prompt, "instrumental": request.instrumental, "duration": request.duration, "number_of_steps": request.number_of_steps }
-        if request.seed is not None: arguments["seed"] = request.seed
+        seed_val = getattr(request, "seed", None)
+        if seed_val is not None:
+            arguments["seed"] = seed_val
         print(f"Calling fal-ai/ace-step/prompt-to-audio with: {arguments}")
         result = fal_client.run("fal-ai/ace-step/prompt-to-audio", arguments=arguments)
         return await process_fal_audio_result(result, "Prompt-to-audio generated successfully")
